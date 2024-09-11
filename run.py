@@ -25,16 +25,16 @@ log = logging.getLogger(__name__)
 def main(context: GearToolkitContext) -> None:
 
     # Step 0: Parse the configuration file
-    user, filepath, input_label, min, max , project_label = parse_config(context)
+    user, filepath, input_label, age_min, age_max, threshold, project_label = parse_config(context)
 
     # Step 1: Create the cover page
-    cover = create_cover_page(user, input_label, min, max, project_label)
+    cover = create_cover_page(user, input_label, age_min, age_max, threshold, project_label)
 
     # Step 2: Parse the CSV file
-    df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels = parse_csv(filepath, project_label)
+    df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels = parse_csv(filepath, project_label, age_min, age_max, threshold)
 
     # Step 3: Create the data report
-    report = create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels)
+    report = create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels, age_min, age_max, threshold)
 
     # Step 4: Merge cover page and data report
         # Get the current timestamp

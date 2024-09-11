@@ -9,7 +9,7 @@ import os
 
 
 # 1. Generate Cover Page
-def create_cover_page(user, input_label, min, max, project_label):
+def create_cover_page(user, input_label, min_age, max_age, threshold, project_label):
     pdf = FPDF()
     pdf.add_page()
 
@@ -26,7 +26,7 @@ def create_cover_page(user, input_label, min, max, project_label):
     pdf.ln(10)  # Line break
     pdf.multi_cell(0, 10, txt="This report provides a detailed summary of the input derived data provided."
                               " The data is analyzed based on sex and includes the calculation of brain volume z-scores for different age groups."
-                              " List of outliers has been generated based on z-scores outside of ±1.5 SD."
+                              f" List of outliers has been generated based on z-scores outside of ±{threshold} SD."
                               " Custom options such as age filtering and polynomial fitting have been applied to the data.")
 
     # Timestamp
@@ -41,7 +41,8 @@ def create_cover_page(user, input_label, min, max, project_label):
     # Custom Options
     pdf.ln(10)
     pdf.multi_cell(0, 10, txt="Custom Options Used:\n"
-                              f"1. Age Range: {min}-{max} months\n"
+                              f"1. Age Range: {min_age}-{max_age} months\n"
+                              f"2. Outlier Threshold: ±{threshold} SD\n"
                               "2. Polynomial Fit: Degree 3 (Cubic)\n"
                               "3. Confidence Interval: 95%\n")
     # Ensure the directory exists
@@ -57,7 +58,7 @@ def create_cover_page(user, input_label, min, max, project_label):
 
 
 # 2. Parse the CSV File
-def parse_csv(filepath, project_label):
+def parse_csv(filepath, project_label, age_min, age_max, threshold):
 
     """Parse the input CSV file.
 
@@ -104,9 +105,6 @@ def parse_csv(filepath, project_label):
     # Calculate z-scores
     df['z_score'] = (df['total intracranial'] - df['mean_total_intracranial']) / df['std_total_intracranial']
 
-    # Resulting DataFrame with Z-scores
-    # print(df)
-
     # Check if 'project_label' exists, if not, assign a default value
     if 'project_label' not in df.columns:
         df['project_label'] = project_label  # Or any default value like None
@@ -114,7 +112,7 @@ def parse_csv(filepath, project_label):
     columns_to_keep = ['project_label', 'subject',	'session',	'age_in_months', 'sex',	'acquisition',	'total intracranial', 'z_score']
         
     # Filter the DataFrame for subjects with z-scores outside of ±1.5 SD and retain only the specified columns
-    outliers_df = df[(df['z_score'] < -1.5) | (df['z_score'] > 1.5)][columns_to_keep]
+    outliers_df = df[(df['z_score'] < - threshold) | (df['z_score'] > threshold)][columns_to_keep]
     # Save the filtered DataFrame to a CSV file
     outliers_df.to_csv('/flywheel/v0/output/outliers_list.csv', index=False)
     outlier_n = len(outliers_df)
@@ -129,8 +127,8 @@ def parse_csv(filepath, project_label):
 
 
     # Set limit for the age range to be included in the analysis
-    upper_age_limit = 24
-    lower_age_limit = 1  
+    upper_age_limit = age_max
+    lower_age_limit = age_min  
 
     # Filter the data to include only observations up to 30 months
     filtered_df = clean_df[(clean_df['age_in_months'] <= upper_age_limit) & (clean_df['age_in_months'] >= lower_age_limit)]
@@ -180,14 +178,11 @@ def parse_csv(filepath, project_label):
 
     # Round the numerical columns to 2 decimal places
     summary_table = summary_table.round(2)
-
-
     return df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels
 
 
-
 # 3. Generate the Data Report
-def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels):
+def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels, age_min, age_max, threshold):
 
     """Generate a data report with multiple plots and a summary table in a PDF format.
 
@@ -247,11 +242,11 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
         plt.figtext(0.1, 0.1, 
                     "This boxplot displays the distribution of z-scores by age group.\n"
                     "Each box represents the interquartile range, with whiskers extending\n"
-                    f"to show the range within 1.5 times the IQR.\n"
+                    f"to show the range within {threshold} times the IQR.\n"
                     ""
                     f"Total number of unique sessions = {n_sessions}\n"
                     f"Number of sessions after removing outliers = {n_clean_sessions}\n"
-                    f"{outlier_n} participants fell outside the 1.5 IQR range and are flagged for further review.",
+                    f"{outlier_n} participants fell outside the {threshold} IQR range and are flagged for further review.",
                     wrap=True, horizontalalignment='left', fontsize=12,
                     bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing)
 
@@ -315,10 +310,10 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
         ax.grid(True)
         
         # Add explanation text below the plot
-        plt.figtext(0.05, 0.1, "This plot shows the distribution of participant ages in months. "
-                            "The KDE curve provides a smoothed estimate of the age distribution. "
-                            f" Plot limits set to 1-24 months, n = {n}. "
-                                f" Included projects = {', '.join(project_labels)}",
+        plt.figtext(0.05, 0.1, "This plot shows the distribution of participant ages in months.\n"
+                            "The KDE curve provides a smoothed estimate of the age distribution.\n"
+                            f"Plot limits set to {age_min}-{age_max} months, n = {n}.\n "
+                                f"Included projects = {', '.join(project_labels)}",
                     wrap=True, horizontalalignment='left', fontsize=12,
                     bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing)
 
@@ -356,9 +351,9 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
         # Add explanation text below the plot
         plt.figtext(0.05, 0.1,  f"This scatter plot shows the relationship between age and total intracranial volume, \n"
                                 f"with a cubic polynomial fit. The trend is separated by sex, and confidence intervals \n"
-                                f"are included for each fit. Data points outside the initial study 1.5 IQR range are excluded from the plot.\n"
+                                f"are included for each fit. Data points outside the initial study {threshold} IQR range are excluded from the plot.\n"
                                 "\n"
-                                f"Plot limits set to 1-24 months, \n"
+                                f"Plot limits set to {age_min}-{age_max} months, \n"
                                 f"n = {n}\n"
                                 f"Included projects = {', '.join(project_labels)}",
                     wrap=True, horizontalalignment='left', fontsize=12,

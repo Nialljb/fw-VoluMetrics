@@ -43,8 +43,9 @@ def parse_config(context):
         log.info("Session spreadsheet not provided")
         inputs_provided = False
 
-    min = context.config.get("age_min")
-    max = context.config.get("age_max")
+    age_min = context.config.get("age_min")
+    age_max = context.config.get("age_max")
+    threshold = context.config.get("threshold")
 
     # -------------------  Get Input label -------------------  #
 
@@ -56,5 +57,5 @@ def parse_config(context):
 
     print("Input label: ", input_label)
 
-    return user, df, input_label, min, max, project_label
+    return user, df, input_label, age_min, age_max, threshold, project_label
 
