@@ -1,8 +1,8 @@
 #!/usr/bin/env bash 
 
-GEAR=fw-freeSurfer-clinical-gear
-IMAGE=flywheel/recon-all-clinical:0.3.2
-LOG=recon-all-clinical-0.3.2-6693ed92c5b43a181c9ad9c5
+GEAR=fw-volumetrics
+IMAGE=flywheel/volumetrics:0.0.1
+LOG=volumetrics-0.0.1-66e19daa61319157aa4aba20
 
 # Command:
 docker run -it --rm --entrypoint bash\
