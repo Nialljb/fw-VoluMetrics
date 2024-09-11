@@ -1,0 +1,114 @@
+{
+  "author": "Niall Bourke",
+  "cite": "VoluMetrics: A tool for the automated extraction of brain volume metrics from MRI scans processed on the Flywheel platform. ",
+  "command": "python3 /flywheel/v0/run.py",
+  "config": {
+    "age_min": {
+      "default": 1,
+      "description": "Minimum age band to be included in the report (months)",
+      "maximum": 300,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "age_max": {
+      "default": 3,
+      "description": "Maximum age band to be included in the report (months)",
+      "maximum": 300,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "custom": {
+    "analysis-level": "project",
+    "flywheel": {
+      "classification": {
+        "components": [
+          "Report Generation"
+        ],
+        "keywords": [
+          "report",
+          "normative modelling",
+          "outlier detection",
+          "summary statistics"
+        ],
+        "modality": [
+          "derivative"
+        ],
+        "type": [
+          "csv"
+        ]
+      },
+      "suite": "UNITY Apps"
+    },
+    "gear-builder": {
+      "category": "analysis",
+      "image": "flywheel/volumetrics:0.0.1"
+    },
+    "kcl-app-binary": "app/main.py",
+    "kcl-app-modalities": [
+      "anat"
+    ],
+    "license": {
+      "dependencies": [
+        {
+          "name": "",
+          "url": ""
+        }
+      ],
+      "main": {
+        "name": "",
+        "url": ""
+      },
+      "non-commercial-use-only": false
+    }
+  },
+  "description": "This gear implements parses brain derivatives in a csv format and generates a report containing summary statistics and normative modelling.",
+  "environment": {
+    "CONDA_DIR": "/opt/conda",
+    "FLYWHEEL": "/flywheel/v0",
+    "GPG_KEY": "A035C8C19219BA821ECEA86B64E628F8D684696D",
+    "LANG": "C.UTF-8",
+    "PYTHON_GET_PIP_SHA256": "22b849a10f86f5ddf7ce148ca2a31214504ee6c83ef626840fde6e5dcd809d11",
+    "PYTHON_GET_PIP_URL": "https://github.com/pypa/get-pip/raw/c6add47b0abf67511cdfb4734771cbab403af062/public/get-pip.py",
+    "PYTHON_PIP_VERSION": "23.2.1",
+    "PYTHON_VERSION": "3.11.6",
+    "container": "oci",
+    "_": "/usr/bin/printenv",
+    "SHLVL": "0",
+    "PWD": "/flywheel/v0",
+    "OS": "Linux",
+    "LANGUAGE": "en_US",
+    "PYSITE": "/usr/local/lib/python3.11/site-packages",
+    "COMMIT_SHA": "771cdc04",
+    "COMMIT_REF": "main",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "PROMETHEUS_MULTIPROC_DIR": "/var/metrics",
+    "PATH": "/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "FW_GID": "31337",
+    "DEBIAN_FRONTEND": "noninteractive",
+    "PYTHON_SETUPTOOLS_VERSION": "65.5.1",
+    "BUILD_TIME": "2023-10-30T13:12:10Z",
+    "SETUPTOOLS_USE_DISTUTILS": "stdlib",
+    "LC_ALL": "C.UTF-8",
+    "EDITOR": "micro",
+    "FW_UID": "31337"
+  },
+  "inputs": {
+    "api-key": {
+      "base": "api-key",
+      "read-only": true
+    },
+    "input": {
+      "base": "file",
+      "description": "Derivatives to be processed",
+      "optional": false
+    }
+  },
+  "label": "VoluMetrics",
+  "license": "MIT",
+  "maintainer": "Niall Bourke <niall.bourke@kcl.ac.uk>",
+  "name": "volumetrics",
+  "source": "",
+  "url": "",
+  "version": "0.0.1"
+}
