@@ -24,10 +24,14 @@ def parse_config(context):
 
     api_key = context.get_input("api-key").get("key")
     fw = flywheel.Client(api_key=api_key)
-    user = fw.get_current_user()
+    user = fw.get_current_user().email
     print(f"Logged in as {fw.get_current_user().email}")
 
-    # input_container = context.client.get_analysis(context.destination["id"])
+    input_container = context.client.get_analysis(context.destination["id"])
+    proj_id = input_container.parents["project"]
+    project_container = context.client.get(proj_id)
+    project_label = project_container.label
+    print("project label: ", project_label)
 
     # -------------------  Get Input Data -------------------  #
 
@@ -39,20 +43,18 @@ def parse_config(context):
         log.info("Session spreadsheet not provided")
         inputs_provided = False
 
+    min = context.config.get("age_min")
+    max = context.config.get("age_max")
+
     # -------------------  Get Input label -------------------  #
 
     # Specify the directory you want to list files from
     directory_path = '/flywheel/v0/input/input'
     # List all files in the specified directory
     for filename in os.listdir(directory_path):
-        if os.path.isfile(os.path.join(directory_path, filename)):
-            filename_without_extension = filename.split('.')[0]
-            no_white_spaces = filename_without_extension.replace(" ", "")
-            # no_white_spaces = filename.replace(" ", "")
-            cleaned_string = re.sub(r'[^a-zA-Z0-9]', '_', no_white_spaces)
-            input_label = cleaned_string.rstrip('_') # remove trailing underscore
+        input_label = filename
 
     print("Input label: ", input_label)
 
-    return user, df, input_label
+    return user, df, input_label, min, max, project_label
 

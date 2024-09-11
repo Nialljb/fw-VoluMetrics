@@ -2,6 +2,8 @@
 import logging
 from app.parser import parse_config
 from app.main import create_cover_page, parse_csv, create_data_report, merge_pdfs
+from datetime import datetime
+
 # import flywheel functions
 from flywheel_gear_toolkit import GearToolkitContext
 
@@ -22,19 +24,27 @@ log = logging.getLogger(__name__)
 # Define the main function
 def main(context: GearToolkitContext) -> None:
 
-    user, df, input_label = parse_config()
+    # Step 0: Parse the configuration file
+    user, filepath, input_label, min, max , project_label = parse_config(context)
 
     # Step 1: Create the cover page
-    cover = create_cover_page(user, input_label)
+    cover = create_cover_page(user, input_label, min, max, project_label)
 
     # Step 2: Parse the CSV file
-    summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels = parse_csv(df)
+    df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels = parse_csv(filepath, project_label)
 
     # Step 3: Create the data report
-    report = create_data_report(summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels)
+    report = create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels)
 
     # Step 4: Merge cover page and data report
-    merge_pdfs(cover, report, "final_report.pdf")
+        # Get the current timestamp
+    current_timestamp = datetime.now()
+    # Format the timestamp as a string
+    formatted_timestamp = current_timestamp.strftime('%Y-%m-%d_%H-%M-%S')
+
+    final_report = "/flywheel/v0/output/" + project_label + "_" + formatted_timestamp + "_report.pdf"
+
+    merge_pdfs(cover, report, final_report)
 
     print("Report generated: final_report.pdf")
 

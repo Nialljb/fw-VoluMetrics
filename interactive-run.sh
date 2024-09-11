@@ -1,8 +1,8 @@
 #!/usr/bin/env bash 
 
 GEAR=fw-volumetrics
-IMAGE=flywheel/volumetrics:0.0.1
-LOG=volumetrics-0.0.1-66e19daa61319157aa4aba20
+IMAGE=flywheel/volumetrics:0.0.4
+LOG=volumetrics-0.0.4-66e1b81bfcb1fec4ca4ab3c7
 
 # Command:
 docker run -it --rm --entrypoint bash\

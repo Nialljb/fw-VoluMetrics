@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
+import os
 
 
 # 1. Generate Cover Page
-def create_cover_page(user, input_label):
+def create_cover_page(user, input_label, min, max, project_label):
     pdf = FPDF()
     pdf.add_page()
 
@@ -40,16 +41,23 @@ def create_cover_page(user, input_label):
     # Custom Options
     pdf.ln(10)
     pdf.multi_cell(0, 10, txt="Custom Options Used:\n"
-                              "1. Age Range: 0-24 months\n"
+                              f"1. Age Range: {min}-{max} months\n"
                               "2. Polynomial Fit: Degree 3 (Cubic)\n"
                               "3. Confidence Interval: 95%\n")
+    # Ensure the directory exists
+    output_dir = "/flywheel/v0/work/"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    # Save the cover page as PDF
-    pdf.output("/flywheel/v0/output/cover_page.pdf")
+    # Save the PDF
+    pdf.output(os.path.join(output_dir, "cover_page.pdf"))
+    cover = "/flywheel/v0/work/cover_page.pdf"
+    print("Cover page has been generated.")
+    return cover
 
 
 # 2. Parse the CSV File
-def parse_csv(df):
+def parse_csv(filepath, project_label):
 
     """Parse the input CSV file.
 
@@ -65,9 +73,10 @@ def parse_csv(df):
         
     # Example DataFrame with ages in months
     #  df = pd.read_csv('/Users/nbourke/GD/atom/unity/fw-gears/fw-untitled/UNITY-Derivatives-volumes.csv')
-
+    df = pd.read_csv(filepath)
     n_sessions = df['session'].nunique()  # Number of unique sessions
     print("Number of unique sessions: ", n_sessions)
+    print()
 
     # Define the bins and labels
     # These have been setup with finer granularity early on due to rapid growth and then coarser granularity later
@@ -80,6 +89,8 @@ def parse_csv(df):
 
 
     # Bin the ages
+    # Rename the 'age' column to 'age_in_days'
+    df.rename(columns={'age': 'age_in_days'}, inplace=True)
     df['age_in_months'] = df['age_in_days'] / 30.44
     df['age_group'] = pd.cut(df['age_in_months'], bins=bins, labels=labels, right=False)
 
@@ -96,12 +107,16 @@ def parse_csv(df):
     # Resulting DataFrame with Z-scores
     # print(df)
 
-    # Define the list of columns you want to retain
+    # Check if 'project_label' exists, if not, assign a default value
+    if 'project_label' not in df.columns:
+        df['project_label'] = project_label  # Or any default value like None
+        # Define the list of columns you want to retain
     columns_to_keep = ['project_label', 'subject',	'session',	'age_in_months', 'sex',	'acquisition',	'total intracranial', 'z_score']
+        
     # Filter the DataFrame for subjects with z-scores outside of ±1.5 SD and retain only the specified columns
     outliers_df = df[(df['z_score'] < -1.5) | (df['z_score'] > 1.5)][columns_to_keep]
     # Save the filtered DataFrame to a CSV file
-    outliers_df.to_csv('outliers_list.csv', index=False)
+    outliers_df.to_csv('/flywheel/v0/output/outliers_list.csv', index=False)
     outlier_n = len(outliers_df)
 
     # Step 3: Create a clean DataFrame by excluding the outliers
@@ -110,7 +125,7 @@ def parse_csv(df):
     n_clean_sessions = clean_df['session'].nunique()  # Number of unique sessions in the clean data
 
     # Optional: Save the clean DataFrame to a CSV file
-    clean_df.to_csv('/flywheel/v0/output/clean_data.csv', index=False)
+    clean_df.to_csv('/flywheel/v0/work/clean_data.csv', index=False)
 
 
     # Set limit for the age range to be included in the analysis
@@ -167,12 +182,12 @@ def parse_csv(df):
     summary_table = summary_table.round(2)
 
 
-    return summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels
+    return df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels
 
 
 
 # 3. Generate the Data Report
-def create_data_report(summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels):
+def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels):
 
     """Generate a data report with multiple plots and a summary table in a PDF format.
 
@@ -181,8 +196,8 @@ def create_data_report(summary_table, filtered_df, n, n_projects, n_sessions, n_
     """
 
 
-    with PdfPages('/flywheel/v0/output/data_report.pdf') as pdf:
-
+    with PdfPages('/flywheel/v0/work/data_report.pdf') as pdf:
+        report = '/flywheel/v0/work/data_report.pdf'
         # Define A4 full page size
         a4_fig_size = (8.27, 11.69)  # A4 size
         # --- Plot 1: Boxplot of all Z-Scores by Age Group with Sample Sizes --- #
@@ -356,19 +371,24 @@ def create_data_report(summary_table, filtered_df, n, n_projects, n_sessions, n_
         plt.close()
 
     print("PDF summary report has been generated.")
+    return report
 
 
 # 4. Merge the Cover Page and Data Report
-output_path = '/flywheel/v0/output/final_report.pdf'
-def merge_pdfs(cover_page_path, data_report_path, output_path):
+def merge_pdfs(cover, report, final_report):
     merger = PdfMerger()
 
+    print("Merging the cover page and data report...")
+    print("Cover Page: ", cover)
+    print("Data Report: ", report)
+    print("Final Report: ", final_report)
+
     # Append the cover page
-    merger.append(cover_page_path)
+    merger.append(cover)
 
     # Append the data report
-    merger.append(data_report_path)
+    merger.append(report)
 
     # Write to a final PDF
-    merger.write(output_path)
+    merger.write(final_report)
     merger.close()
