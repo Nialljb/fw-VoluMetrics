@@ -61,6 +61,7 @@ PyPDF2==3.0.1
 python-dateutil==2.9.0.post0
 pytz==2024.1
 pyzmq==26.0.0
+reportlab==4.2.5
 requests==2.31.0
 requests-toolbelt==1.0.0
 scipy==1.14.1
