@@ -52,10 +52,11 @@ def parse_config(context):
     # Specify the directory you want to list files from
     directory_path = '/flywheel/v0/input/input'
     # List all files in the specified directory
+    input_labels = []
     for filename in os.listdir(directory_path):
-        input_label = filename
+        input_labels.append(filename)
 
-    print("Input label: ", input_label)
+    print("Input label: ", input_labels)
 
-    return user, df, input_label, age_min, age_max, threshold, project_label
+    return user, df, input_labels, age_min, age_max, threshold, project_label
 
