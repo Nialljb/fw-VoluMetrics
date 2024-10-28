@@ -68,6 +68,9 @@ docker run -it --entrypoint /bin/bash <image>
 > docker run -it --rm -v ""\
         flywheel/ciso:0.0.1-beta
 
+If you are running interactive-run.sh, provide the  image tag as the first argument, and the job id as the second argument.
+> ./interactive-run.sh "0:0:6" "66e1ea9961319157aa4aba5e"
+
 The structure of this container is how the Flywheel instance sees it so now can debug easier by checking the input folder and config.json to make sure they match. There will be sample data there now from Flywheel that was specified by the user on the instance. 
 
 - Any references now can be ammended
