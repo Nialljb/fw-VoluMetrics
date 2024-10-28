@@ -1,5 +1,5 @@
 {
-  "author": "Niall Bourke",
+  "author": "Niall Bourke, Hajer Karoui",
   "cite": "VoluMetrics: A tool for the automated extraction of brain volume metrics from MRI scans processed on the Flywheel platform. ",
   "command": "python3 /flywheel/v0/run.py",
   "config": {
@@ -49,7 +49,7 @@
     },
     "gear-builder": {
       "category": "analysis",
-      "image": "flywheel/volumetrics:0.0.6"
+      "image": "flywheel/volumetrics:0.0.7"
     },
     "kcl-app-binary": "app/main.py",
     "kcl-app-modalities": [
@@ -117,5 +117,5 @@
   "name": "volumetrics",
   "source": "",
   "url": "",
-  "version": "0.0.6"
+  "version": "0.0.7"
 }
