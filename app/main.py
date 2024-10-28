@@ -36,7 +36,9 @@ def get_ycoordinate(plot_path):
     return next_y_coordinate
 
 # 1. Generate Cover Page
-def create_cover_page(user, input_label, min_age, max_age, threshold, project_label,output_dir):
+def create_cover_page(user, input_labels, min_age, max_age, threshold, project_label,output_dir):
+
+    labels = input_labels.keys()
 
     filename = 'cover_page'
     cover = f"{output_dir}{filename}.pdf"
@@ -52,9 +54,9 @@ def create_cover_page(user, input_label, min_age, max_age, threshold, project_la
     pdf.setFont("Helvetica-Bold", 16)
     pdf.drawCentredString(10.5 * cm, 27 * cm, "UNITY Data Summary Report")
 
-    # Sub-title
+    # Sub-title : Recon-all output
     pdf.setFont("Helvetica", 14)
-    pdf.drawCentredString(10.5 * cm, 25.5 * cm, input_label)
+    pdf.drawCentredString(10.5 * cm, 25.5 * cm, input_labels['recon-all'])
 
     # Sub-title
     pdf.setFont("Helvetica", size=14)    
@@ -255,7 +257,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
 
     """Generate a data report with multiple plots and a summary table in a PDF format.
 
-    Returns:
+    Returns: report filename
         
     """
 
@@ -329,7 +331,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     plt.subplots_adjust(top=0.85, bottom=0.4)  # Adjust to fit title and text properly
     # Save the plot only
     plot_path = os.path.join(output_dir, "zscores_agegroup_plot.png")
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig(plot_path)
 
     # image = ImageReader(plot_path)
@@ -387,7 +389,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     # Adjust layout to ensure no overlap
     plt.subplots_adjust(top=0.85, bottom=0.2)  # Adjust to fit title and text properly
     plot_path = os.path.join(output_dir, "descriptive_stats.png")
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig(plot_path)
 
     image = ImageReader(plot_path)
@@ -438,7 +440,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     plot_path = os.path.join(output_dir, "agedist_plot.png")
     
 
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig(plot_path)
     #pdf.savefig()  # Save plot and text to the PDF
     plt.close()
@@ -481,13 +483,13 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     # Add explanation text below the plot
     plt.figtext(0.05, 0.3,  f"This scatter plot shows the relationship between age and total intracranial volume, \n"
                             f"with a cubic polynomial fit. The trend is separated by sex, and confidence intervals \n"
-                            f"are included for each fit. Data points outside the initial study {threshold} IQR range are excluded from the plot.\n"
+                            f"are included for each fit.\nData points outside the initial study {threshold} IQR range are excluded from the plot.\n"
                             "\n"
                             f"Plot limits set to {age_min}-{age_max} months, \n"
                             f"n = {n}\n"
                             f"Included projects = {', '.join(project_labels)}",
                 wrap=True, horizontalalignment='left', fontsize=12,
-                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing)
+                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 13})  # Added padding for better spacing
 
     # Adjust layout to ensure no overlap
     plt.subplots_adjust(top=0.85, bottom=0.2)  # Adjust to fit title and text properly
@@ -495,29 +497,142 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     plot_path = os.path.join(output_dir, "ageVol_scatter_plot.png")
     
 
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig(plot_path)
     #pdf.savefig()  # Save plot and text to the PDF
     plt.close()
 
-    pdf.drawImage(plot_path, 75, next_y_coordinate, width= 400, preserveAspectRatio=True)   # Position plot higher on the page
-
-    plt.close()
-
-
+    pdf.drawImage(plot_path, 75, next_y_coordinate, width= 400, preserveAspectRatio=True)   # Position plot higher on the page    
     pdf.save()  # Save the PDF
 
     print("PDF summary report has been generated.")
     return report
 
+# 4. Generate the QC report
+def generate_qc_report (input_dir, input_labels,output_dir) :
 
-# 4. Merge the Cover Page and Data Report
-def merge_pdfs(cover, report, final_report):
+    """Generate the QC report section in a PDF format.
+
+    Returns: report filename
+        
+    """
+
+    filename = "qc_report"
+    report = f'{output_dir}{filename}.pdf'
+    pdf = canvas.Canvas((f'{output_dir}{filename}.pdf') )
+    a4_fig_size = (8.27, 11.69)  # A4 size
+    # Define the page size
+    page_width, page_height = A4
+
+    df = pd.read_csv(os.path.join(input_dir,input_labels['qc']))
+    #Columns of interest
+    cols = ["quality_AXI", "quality_COR","quality_SAG","QC_all"]
+
+    # Define the color palette depending on the attribute
+    color_palette = {
+        'good': '#6D9C77',  # Cool-toned green
+        'passed': '#6D9C77',  # Cool-toned green
+
+        'failed': '#D96B6B',  # Muted, elegant red
+        'bad': '#D96B6B',  # Muted, elegant red
+
+        'unsure': '#E7C069',  # Soft, subtle yellow
+        'incomplete': '#6A89CC'  # Muted blue
+    }
+
+
+    # Pie chart for each acquisition type
+    for col in cols:
+        counts = df[col].value_counts()  # Count 'pass', 'fail', 'unclear' in each column
+        # Extract colors based on labels present in the column
+        print(col , counts)
+        colors = [color_palette[label] for label in counts.index if label in color_palette]
+
+        print(colors)
+
+        plt.figure(figsize=(8, 8))
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', startangle=90,colors=colors)
+        plt.title(f'QC Distribution for {col}',fontsize=12)
+        plot_path = os.path.join(output_dir, f"{col}.png")
+        # plt.tight_layout()
+        plt.savefig(plot_path)
+        plt.close()
+
+     # Define subtitle text and positioning
+    subtitle_text = "Quality Control Distribution by Acquisition Type"
+    subtitle_x = A4[0] / 2  # Centered horizontally
+    subtitle_y = 27 * cm  # Position the subtitle near the top in cm
+
+    # Draw the subtitle
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawCentredString(subtitle_x, subtitle_y, subtitle_text)
+
+    # Define image positions for a 2x2 grid using cm units
+    positions = [
+    (1 * cm, 16 * cm),   # Top-left (lowered)
+    (10 * cm, 16 * cm),  # Top-right (lowered)
+    (1 * cm, 7 * cm),    # Bottom-left (lowered)
+    (10 * cm, 7 * cm)    # Bottom-right (lowered)
+]
+
+    # Define position for the line chart below the grid
+    line_chart_position = (1 * cm, 5 * cm)  # Adjust this y-coordinate as necessary
+
+    # Load and draw each saved pie chart image at the specified positions
+    for i, col in enumerate(cols):
+        img = ImageReader(os.path.join(output_dir, f"{col}.png"))
+        x, y = positions[i]
+        pdf.drawImage(img, x, y, width=10 * cm, height=10 * cm)  # Adjust image size as needed
+    
+    
+    
+    ####### Failures over time ########
+
+    # Preprocess the session_date to replace underscores with colons
+    df['session_date'] = df['Session Label'].str.replace('_', ':', regex=False)
+
+    # Ensure session_date is a datetime type
+    df['session_date'] = pd.to_datetime(df['session_date'], errors='coerce')
+
+    # Check for any parsing issues
+    if df['session_date'].isnull().any():
+        print("Warning: Some dates could not be parsed.")
+
+    # Convert to just date (removing the time part)
+    df['session_date'] = df['session_date'].dt.date
+
+    # Filter for failures and count them by date
+    failures_by_date = df[df['QC_all'] == 'failed'].groupby('session_date').size()
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(failures_by_date.index, failures_by_date.values, marker='o', linestyle='-', color='#D96B6B')  # Use the muted red for failures
+    plt.title('Failures Over Time')
+    plt.xlabel('Session Date')
+    plt.ylabel('Number of Failures')
+    plt.xticks(rotation=45)  # Rotate date labels for better readability
+    plt.grid()
+    plt.tight_layout()  # Adjust layout to make room for rotated labels
+
+    line_chart_image_path = "failure_percentage_over_time.png"
+    plt.savefig(line_chart_image_path)  # Save the plot as an image
+    
+    # Path to your line chart image
+    #pdf.drawImage(line_chart_image_path, line_chart_position[0], line_chart_position[1], width=8 * cm, height=5 * cm)  # Adjust dimensions   
+    
+    
+    pdf.save()  # Save the PDF
+
+    return report
+
+# 5. Merge the Cover Page and Data Report
+def merge_pdfs(cover, report, qc, final_report):
     merger = PdfMerger()
 
     print("Merging the cover page and data report...")
     print("Cover Page: ", cover)
     print("Data Report: ", report)
+    print("QC Report: ", qc)
     print("Final Report: ", final_report)
 
     # Append the cover page
@@ -525,6 +640,9 @@ def merge_pdfs(cover, report, final_report):
 
     # Append the data report
     merger.append(report)
+
+    # Append the qc report
+    merger.append(qc)
 
     # Write to a final PDF
     merger.write(final_report)
