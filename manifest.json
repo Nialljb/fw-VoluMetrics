@@ -36,7 +36,8 @@
           "report",
           "normative modelling",
           "outlier detection",
-          "summary statistics"
+          "summary statistics",
+          "QC viz summary"
         ],
         "modality": [
           "derivative"
@@ -49,7 +50,7 @@
     },
     "gear-builder": {
       "category": "analysis",
-      "image": "flywheel/volumetrics:0.0.7"
+      "image": "flywheel/volumetrics:0.0.8"
     },
     "kcl-app-binary": "app/main.py",
     "kcl-app-modalities": [
@@ -109,6 +110,11 @@
       "base": "file",
       "description": "Derivatives to be processed",
       "optional": false
+    },
+    "QC": {
+      "base": "file",
+      "description": "Visual QC file from form-parser gear",
+      "optional": true
     }
   },
   "label": "VoluMetrics",
@@ -117,5 +123,5 @@
   "name": "volumetrics",
   "source": "",
   "url": "",
-  "version": "0.0.7"
+  "version": "0.0.8"
 }

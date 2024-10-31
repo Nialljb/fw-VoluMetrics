@@ -8,7 +8,7 @@ https://flywheel-io.gitlab.io/tools/app/cli/fw-beta/login/
    
 > source ~/.zshrc 
   
-> fw-beta login --api-key=${FW_CLI_API_KEY} .   
+> fw-beta login --api-key=${FW_CLI_API_KEY}  
 
 ### In the folder where you have your gear (Dockerfile and manifest), run:
 > fw-beta gear build 
@@ -68,8 +68,8 @@ docker run -it --entrypoint /bin/bash <image>
 > docker run -it --rm -v ""\
         flywheel/ciso:0.0.1-beta
 
-If you are running interactive-run.sh, provide the  image tag as the first argument, and the job id as the second argument.
-> ./interactive-run.sh "0:0:6" "66e1ea9961319157aa4aba5e"
+If you are running interactive-run.sh, provide the image tag as the first argument, the job id as the second argument, and your directory to the gears as the third argument. For example:
+> ./interactive-run.sh 0.0.6 66e1ea9961319157aa4aba5e /home/hajerkr
 
 The structure of this container is how the Flywheel instance sees it so now can debug easier by checking the input folder and config.json to make sure they match. There will be sample data there now from Flywheel that was specified by the user on the instance. 
 
