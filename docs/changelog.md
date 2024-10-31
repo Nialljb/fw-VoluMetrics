@@ -1,5 +1,9 @@
 # Changelog
-11/09/2024
+29/10/2024
+
+Version 0.0.7
+- Added visual QC plots
+- Enhanced report layout
 
 Version 0.0.6
 - 0.0.5 successfully tested on Flywheel

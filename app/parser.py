@@ -52,7 +52,8 @@ def parse_config(context):
     # Specify the directory you want to list files from
     directory_path = '/flywheel/v0/input/input'
     # List all files in the specified directory
-    input_labels = {"recon-all":"", "qc":""} #recon-all output, QC output , [add more as needed]
+    #recon-all output, QC output , [add more as needed]
+    input_labels = {} 
 
     for filename in os.listdir(directory_path):
         if "recon-all-clinical" in filename:
@@ -60,6 +61,12 @@ def parse_config(context):
 
         elif "parsed_qc_annotations" in filename:
             input_labels["qc"] = filename
+
+        elif "synthseg" in filename:
+            input_labels["synthseg"] = filename
+        
+        elif "ants-segementation" in filename:
+            input_labels["ants-segementation"] = filename
 
     print("Input files found: ", input_labels)
 
