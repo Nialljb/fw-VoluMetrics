@@ -53,7 +53,7 @@ def parse_config(context):
     directory_path = '/flywheel/v0/input/input'
     # List all files in the specified directory
     #recon-all output, QC output , [add more as needed]
-    input_labels = {} 
+    input_labels = {"qc":""} 
 
     for filename in os.listdir(directory_path):
         if "recon-all-clinical" in filename:

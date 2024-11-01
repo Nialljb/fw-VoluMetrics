@@ -167,7 +167,7 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
     df['age_group'] = pd.cut(df['age_in_months'], bins=bins, labels=labels, right=False)
 
     # Group by sex and age group
-    grouped = df.groupby(['sex', 'age_group'],observed=False)
+    grouped = df.groupby(['sex', 'age_group'])
 
     # Calculate mean and std for each group
     df['mean_total_intracranial'] = grouped['total intracranial'].transform('mean')
@@ -219,7 +219,7 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
     age_group_labels = [f"{label}\n(n={age_group_counts[label]})" for label in age_group_counts.index]
 
     # Group by sex and age group and calculate the necessary statistics
-    summary_table = clean_df.groupby(['age_group', 'sex'],observed=False).agg({
+    summary_table = clean_df.groupby(['age_group', 'sex']).agg({
         'subject': 'nunique',  # Count the number of unique participants
         'session': 'nunique',  # Count the number of unique sessions
         'total intracranial': ['mean', 'std']  # Mean and std of brain volume
