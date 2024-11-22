@@ -262,7 +262,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     """
 
     filename = "data_report"
-    plot_dir = "/flywheel/v0/output"
+    plot_dir = "/flywheel/v0/work"
     report = f'{output_dir}{filename}.pdf'
     pdf = canvas.Canvas((f'{output_dir}{filename}.pdf') )
     a4_fig_size = (8.27, 11.69)  # A4 size
@@ -478,7 +478,7 @@ def generate_qc_report (input_dir, input_labels,output_dir,project_labels) :
     Returns: report filename
         
     """
-    plot_dir = "/flywheel/v0/output"
+    plot_dir = "/flywheel/v0/work"
     filename = "qc_report"
     report = f'{output_dir}{filename}.pdf'
     pdf = canvas.Canvas((f'{output_dir}{filename}.pdf') )

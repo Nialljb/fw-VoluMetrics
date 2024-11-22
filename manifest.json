@@ -50,7 +50,7 @@
     },
     "gear-builder": {
       "category": "analysis",
-      "image": "flywheel/volumetrics:0.0.8"
+      "image": "flywheel/volumetrics:0.0.9"
     },
     "kcl-app-binary": "app/main.py",
     "kcl-app-modalities": [
@@ -110,17 +110,21 @@
       "base": "file",
       "description": "Derivatives to be processed (supported: recon-all)",
       "optional": false,
-      "type": [
-                    "csv"
-                ]
+      "type": {
+        "enum": [
+          "text/csv"
+        ]
+      }
     },
     "QC": {
       "base": "file",
       "description": "Visual QC file from form-parser gear",
       "optional": true,
-      "type": [
-                    "csv"
-                ]
+      "type": {
+        "enum": [
+          "text/csv"
+        ]
+      }
     }
   },
   "label": "VoluMetrics",
@@ -129,5 +133,5 @@
   "name": "volumetrics",
   "source": "",
   "url": "",
-  "version": "0.0.8"
+  "version": "0.0.9"
 }
