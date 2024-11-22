@@ -167,7 +167,7 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
     df['age_group'] = pd.cut(df['age_in_months'], bins=bins, labels=labels, right=False)
 
     # Group by sex and age group
-    grouped = df.groupby(['sex', 'age_group'],observed=False)
+    grouped = df.groupby(['sex', 'age_group'])
 
     # Calculate mean and std for each group
     df['mean_total_intracranial'] = grouped['total intracranial'].transform('mean')
@@ -219,7 +219,7 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
     age_group_labels = [f"{label}\n(n={age_group_counts[label]})" for label in age_group_counts.index]
 
     # Group by sex and age group and calculate the necessary statistics
-    summary_table = clean_df.groupby(['age_group', 'sex'],observed=False).agg({
+    summary_table = clean_df.groupby(['age_group', 'sex']).agg({
         'subject': 'nunique',  # Count the number of unique participants
         'session': 'nunique',  # Count the number of unique sessions
         'total intracranial': ['mean', 'std']  # Mean and std of brain volume
@@ -262,7 +262,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     """
 
     filename = "data_report"
-    plot_dir = "/flywheel/v0/output"
+    plot_dir = "/flywheel/v0/work"
     report = f'{output_dir}{filename}.pdf'
     pdf = canvas.Canvas((f'{output_dir}{filename}.pdf') )
     a4_fig_size = (8.27, 11.69)  # A4 size
@@ -478,7 +478,7 @@ def generate_qc_report (input_dir, input_labels,output_dir,project_labels) :
     Returns: report filename
         
     """
-    plot_dir = "/flywheel/v0/output"
+    plot_dir = "/flywheel/v0/work"
     filename = "qc_report"
     report = f'{output_dir}{filename}.pdf'
     pdf = canvas.Canvas((f'{output_dir}{filename}.pdf') )
