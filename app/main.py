@@ -16,6 +16,9 @@ import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 import os
 
+output_dir ='/flywheel/v0/output/'
+workdir = '/flywheel/v0/work/'
+
 def get_ycoordinate(plot_path):
 
     page_width, page_height = A4
@@ -54,9 +57,9 @@ def create_cover_page(user, input_labels, min_age, max_age, threshold, project_l
     pdf.setFont("Helvetica-Bold", 16)
     pdf.drawCentredString(10.5 * cm, 27 * cm, "UNITY Data Summary Report")
 
-    # Sub-title : Recon-all output
+    # Sub-title : volumetric output
     pdf.setFont("Helvetica", 14)
-    pdf.drawCentredString(10.5 * cm, 25.5 * cm, input_labels['recon-all'])
+    pdf.drawCentredString(10.5 * cm, 25.5 * cm, input_labels['volumetric'])
 
     # Sub-title
     pdf.setFont("Helvetica", size=14)    
@@ -128,7 +131,7 @@ def create_cover_page(user, input_labels, min_age, max_age, threshold, project_l
     return cover
 
 
-# 2. Parse the recon-all CSV File
+# 2. Parse the volumetric CSV File
 def parse_csv(filepath, project_label, age_min, age_max, threshold):
 
     """Parse the input CSV file.
@@ -185,7 +188,7 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
     # Filter the DataFrame for subjects with z-scores outside of ±1.5 SD and retain only the specified columns
     outliers_df = df[(df['z_score'] < - threshold) | (df['z_score'] > threshold)][columns_to_keep]
     # Save the filtered DataFrame to a CSV file
-    outliers_df.to_csv('/flywheel/v0/output/outliers_list.csv', index=False)
+    outliers_df.to_csv(os.path.join(output_dir,'outliers_list.csv'), index=False)
     outlier_n = len(outliers_df)
 
     # Step 3: Create a clean DataFrame by excluding the outliers
@@ -194,7 +197,7 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
     n_clean_sessions = clean_df['session'].nunique()  # Number of unique sessions in the clean data
 
     # Optional: Save the clean DataFrame to a CSV file
-    clean_df.to_csv('/flywheel/v0/work/clean_data.csv', index=False)
+    clean_df.to_csv(os.path.join(workdir,'clean_data.csv'), index=False)
 
 
     # Set limit for the age range to be included in the analysis
@@ -262,9 +265,8 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     """
 
     filename = "data_report"
-    plot_dir = "/flywheel/v0/work"
-    report = f'{output_dir}{filename}.pdf'
-    pdf = canvas.Canvas((f'{output_dir}{filename}.pdf') )
+    report = f'{workdir}{filename}.pdf'
+    pdf = canvas.Canvas((f'{workdir}{filename}.pdf') )
     a4_fig_size = (8.27, 11.69)  # A4 size
     # Define the page size
     page_width, page_height = A4
@@ -317,17 +319,16 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
                 "This boxplot displays the distribution of z-scores by age group.\n"
                 "Each box represents the interquartile range, with whiskers extending\n"
                 f"to show the range within {threshold} times the IQR.\n"
-                ""
                 f"Total number of unique sessions = {n_sessions}\n"
                 f"Number of sessions after removing outliers = {n_clean_sessions}\n"
                 f"{outlier_n} participants fell outside the {threshold} IQR range and are flagged for further review.",
-                wrap=True, horizontalalignment='left', fontsize=12,
-                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing)
+                wrap=True, horizontalalignment='left', fontsize=11,
+                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 11})  # Added padding for better spacing
 
     # Adjust layout to ensure no overlap
     plt.subplots_adjust(top=0.85, bottom=0.4)  # Adjust to fit title and text properly
     # Save the plot only
-    plot_path = os.path.join(plot_dir, "zscores_agegroup_plot.png")
+    plot_path = os.path.join(workdir, "zscores_agegroup_plot.png")
     #plt.tight_layout()
     plt.savefig(plot_path)
 
@@ -341,7 +342,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     # --- Plot 2: Summary Table of all Participants --- #   
     
     # Create figure with full A4 size using plt.figure() (not plt.subplots)
-    fig = plt.figure(figsize=a4_fig_size)
+    fig = plt.figure(figsize=(10,12))
     ax = fig.add_axes([0.13, 0.5, 0.75, 0.4])  # Left, bottom, width, height (adjust these as needed)
    
     ax.axis('tight')
@@ -359,11 +360,11 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
                 "This table summarizes the descriptive statistics for the participants,\n"
                 "including the number of participants and sessions by sex and age group.",
                 wrap=True, horizontalalignment='left', fontsize=12,
-                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing)
+                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing
 
     # Adjust layout to ensure no overlap
     plt.subplots_adjust(top=0.85, bottom=0.2)  # Adjust to fit title and text properly
-    plot_path = os.path.join(plot_dir, "descriptive_stats.png")
+    plot_path = os.path.join(workdir, "descriptive_stats.png")
     #plt.tight_layout()
     plt.savefig(plot_path)
 
@@ -374,10 +375,12 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     #pdf.savefig()  # Save the table to the PDF
     plt.close()
 
-    next_y_coordinate = get_ycoordinate(plot_path)
+    
 
-    pdf.drawImage(plot_path, 75, next_y_coordinate-90, width= 500, preserveAspectRatio=True)   # Position plot higher on the page
+    pdf.drawImage(plot_path, 75, next_y_coordinate-260, width= 500, preserveAspectRatio=True)   # Position plot higher on the page
     pdf.showPage()
+
+    next_y_coordinate = get_ycoordinate(plot_path)
 
     # --- Plot 3: Histogram of Z-Scores --- #
     
@@ -401,11 +404,11 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
                         f"Plot limits set to {age_min}-{age_max} months, n = {n}.\n "
                             f"Included projects = {', '.join(project_labels)}",
                 wrap=True, horizontalalignment='left', fontsize=12,
-                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 12})  # Added padding for better spacing)
+                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 15})  # Added padding for better spacing
 
     # Adjust layout to ensure no overlap
     plt.subplots_adjust(top=0.85, bottom=0.2)  # Adjust to fit title and text properly
-    plot_path = os.path.join(plot_dir, "agedist_plot.png")
+    plot_path = os.path.join(workdir, "agedist_plot.png")
     
 
     #plt.tight_layout()
@@ -459,7 +462,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     # Adjust layout to ensure no overlap
     plt.subplots_adjust(top=0.85, bottom=0.2)  # Adjust to fit title and text properly
 
-    plot_path = os.path.join(plot_dir, "ageVol_scatter_plot.png")
+    plot_path = os.path.join(workdir, "ageVol_scatter_plot.png")
     plt.savefig(plot_path)
     #pdf.savefig()  # Save plot and text to the PDF
     plt.close()
@@ -471,17 +474,16 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     return report
 
 # 4. Generate the QC report
-def generate_qc_report (input_dir, input_labels,output_dir,project_labels) :
+def generate_qc_report (input_dir, input_labels,project_labels) :
 
     """Generate the QC report section in a PDF format.
 
     Returns: report filename
         
     """
-    plot_dir = "/flywheel/v0/work"
     filename = "qc_report"
-    report = f'{output_dir}{filename}.pdf'
-    pdf = canvas.Canvas((f'{output_dir}{filename}.pdf') )
+    report = f'{workdir}{filename}.pdf'
+    pdf = canvas.Canvas((f'{workdir}{filename}.pdf') )
     a4_fig_size = (8.27, 11.69)  # A4 size
     # Define the page size
     page_width, page_height = A4
@@ -513,7 +515,7 @@ def generate_qc_report (input_dir, input_labels,output_dir,project_labels) :
             plt.figure(figsize=(8, 8))
             plt.pie(counts, labels=counts.index, autopct='%1.1f%%', startangle=90,colors=colors,wedgeprops={'edgecolor': 'black', 'linewidth': 1},textprops={'fontsize': 12} )
             plt.title(f'QC Distribution for {col}',fontsize=14)
-            plot_path = os.path.join(plot_dir, f"{col}.png")
+            plot_path = os.path.join(workdir, f"{col}.png")
             # plt.tight_layout()
             plt.savefig(plot_path)
             plt.close()
@@ -540,7 +542,7 @@ def generate_qc_report (input_dir, input_labels,output_dir,project_labels) :
 
         # Load and draw each saved pie chart image at the specified positions
         for i, col in enumerate(cols):
-            img = ImageReader(os.path.join(plot_dir, f"{col}.png"))
+            img = ImageReader(os.path.join(workdir, f"{col}.png"))
             x, y = positions[i]
             pdf.drawImage(img, x, y, width=10 * cm, height=10 * cm)  # Adjust image size as needed
         
@@ -599,7 +601,7 @@ def generate_qc_report (input_dir, input_labels,output_dir,project_labels) :
         )
         
         plt.tight_layout()  # Adjust layout to make room for rotated labels   
-        plot_path = os.path.join(plot_dir,"failure_percentage_over_time.png")
+        plot_path = os.path.join(workdir,"failure_percentage_over_time.png")
         plt.savefig(plot_path)  # Save the plot as an image
         
         pdf.showPage() #new page        

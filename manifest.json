@@ -50,7 +50,7 @@
     },
     "gear-builder": {
       "category": "analysis",
-      "image": "flywheel/volumetrics:0.0.9"
+      "image": "flywheel/volumetrics:0.0.10"
     },
     "kcl-app-binary": "app/main.py",
     "kcl-app-modalities": [
@@ -108,7 +108,7 @@
     },
     "input": {
       "base": "file",
-      "description": "Derivatives to be processed (supported: recon-all)",
+      "description": "Derivatives to be processed (supported: recon-all, minimorph, ants-segmentation)",
       "optional": false,
       "type": {
         "enum": [
@@ -133,5 +133,5 @@
   "name": "volumetrics",
   "source": "",
   "url": "",
-  "version": "0.0.9"
+  "version": "0.0.10"
 }
