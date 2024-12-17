@@ -625,13 +625,13 @@ def generate_qc_report (input_dir, input_labels,project_labels) :
     return report
 
 # 5. Merge the Cover Page and Data Report
-def merge_pdfs(cover, report, qc, final_report):
+def merge_pdfs(cover, report, final_report):
     merger = PdfMerger()
 
     print("Merging the cover page and data report...")
     print("Cover Page: ", cover)
     print("Data Report: ", report)
-    print("QC Report: ", qc)
+    #print("QC Report: ", qc)
     print("Final Report: ", final_report)
 
     # Append the cover page
@@ -641,7 +641,7 @@ def merge_pdfs(cover, report, qc, final_report):
     merger.append(report)
 
     # Append the qc report
-    merger.append(qc)
+    # merger.append(qc)
 
     # Write to a final PDF
     merger.write(final_report)

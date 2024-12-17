@@ -115,16 +115,6 @@
           "text/csv"
         ]
       }
-    },
-    "QC": {
-      "base": "file",
-      "description": "Visual QC file from form-parser gear",
-      "optional": true,
-      "type": {
-        "enum": [
-          "text/csv"
-        ]
-      }
     }
   },
   "label": "VoluMetrics",
