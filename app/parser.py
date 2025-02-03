@@ -24,7 +24,7 @@ def parse_config(context):
 
     api_key = context.get_input("api-key").get("key")
     fw = flywheel.Client(api_key=api_key)
-    user = fw.get_current_user().email
+    user = f"{fw.get_current_user().firstname} {fw.get_current_user().lastname} [{fw.get_current_user().email}]"
     print(f"Logged in as {fw.get_current_user().email}")
 
     input_container = context.client.get_analysis(context.destination["id"])
@@ -45,6 +45,7 @@ def parse_config(context):
 
     age_min = context.config.get("age_min")
     age_max = context.config.get("age_max")
+    age_range = context.config.get("age_range")
     threshold = context.config.get("threshold")
 
     # -------------------  Get Input label -------------------  #
@@ -53,12 +54,12 @@ def parse_config(context):
     directory_path = '/flywheel/v0/input/input'
     # List all files in the specified directory
     #recon-all output, QC output , [add more as needed]
-    input_labels = {"qc":""} #REMOVE HARCODED FILENAME AFTER TESTING ; parsed_qc_annotations_2024-10-31_22-33-35.csv
+    input_labels = {} #REMOVE HARCODED FILENAME AFTER TESTING ; parsed_qc_annotations_2024-10-31_22-33-35.csv
     name_key_maping = {
     "recon-all-clinical": "volumetric",
     "synthseg": "volumetric",
-    "mrr_axireg": "volumetric",
-    "parsed_qc_annotations": "qc"
+    "mrr_axireg": "volumetric"
+    # ,"parsed_qc_annotations": "qc"
 }
 
     # file_inputs = ['parsed_qc_annotations_2024-10-31_22-33-35.csv','UCT-Khula-Hyperfine-rec_mrr_axireg_volumes.csv']
@@ -67,10 +68,10 @@ def parse_config(context):
     #for filename in file_inputs: #This line was used when debugging locally and specifying filenames
         for keyword, key in name_key_maping.items():
             if keyword in filename:
-                if key == "qc":
-                    input_labels['qc'] = filename
-                else:
-                    input_labels['volumetric'] = filename
+                # if key == "qc":
+                #     input_labels['qc'] = filename
+                # else:
+                input_labels['volumetric'] = filename
                 #break
 
     print("Input files found: ", input_labels)
@@ -78,7 +79,7 @@ def parse_config(context):
     impute_information(context,input_labels['volumetric'])
     rename_columns (input_labels['volumetric'])
 
-    return user, df, input_labels, age_min, age_max, threshold, project_label, directory_path
+    return user, df, input_labels, age_range, age_min, age_max, threshold, project_container, directory_path, api_key
 
 
 def impute_information(context,vols):
@@ -105,6 +106,9 @@ def impute_information(context,vols):
 
     directory_path = '/flywheel/v0/input/input'
     df = pd.read_csv(os.path.join(directory_path,vols))
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
+
     # Check if the sex column has empty values
     column_name = 'sex'
     #has_empty_values = df[column_name].isnull().any()
@@ -123,8 +127,8 @@ def impute_information(context,vols):
         
         df.at[index, column_name] = subject.sex
 
-        #Printing the imputed csv to the input directory to be used for plotting
-        df.to_csv(os.path.join(directory_path,vols))
+    #Printing the modified csv to the input directory to be used for plotting
+    df.to_csv(os.path.join(directory_path,vols),index=False)
 
 def rename_columns (vols):
 
@@ -139,14 +143,17 @@ def rename_columns (vols):
     "synthseg": {'total intracranial': 'total intracranial'},
     "mrr_axireg":{'icv': 'total intracranial'}}
 
+
     for keyword, key in name_key_maping.items():
-        print(keyword,vols)
         if keyword in vols:
-            print(df.columns.tolist())
             column_mapping = name_key_maping[keyword]
             df.rename(columns=column_mapping,inplace=True)
             print('Column has been renamed')
         
 
+    df.columns = df.columns.str.replace('_', ' ').str.replace('-', ' ').str.lower()
+    df.to_csv(os.path.join(directory_path,vols),index=False)
+    print(os.path.join(directory_path,vols))
+    df.to_csv(os.path.join(directory_path,"updated_headers.csv"),index=False)
 
-    df.to_csv(os.path.join(directory_path,vols))
+    print("file saved...")

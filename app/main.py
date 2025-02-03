@@ -6,18 +6,74 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, Frame
+from reportlab.platypus import Paragraph, Frame,SimpleDocTemplate, Table, TableStyle, PageBreak, Spacer,  PageTemplate, Frame
 from reportlab.lib.utils import ImageReader
 
-
+import textwrap
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 import os
+import itertools
+
+from utils.format import beautify_report, scale_image, simplify_label, generate_on_page
 
 output_dir ='/flywheel/v0/output/'
 workdir = '/flywheel/v0/work/'
+
+
+# Define the bins and labels
+# These have been setup with finer granularity early on due to rapid growth and then coarser granularity later
+global bins 
+global labels
+global range_mapping
+global label_mapping
+global bins_mapping
+
+bins = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 21, 24, 30, 36, 48, 60, 72, 84, 96, 108, 120, 144, 168, 192, 216, 252, 300]
+labels = ['0-1 month', '1-2 months', '2-3 months', '3-4 months', '4-5 months', '5-6 months',
+        '6-8 months', '8-10 months', '10-12 months', '12-15 months', '15-18 months', 
+        '18-21 months', '21-24 months', '24-30 months', '30-36 months','3-4 years', 
+        '4-5 years', '5-6 years', '6-7 years', '7-8 years', '8-9 years', '9-10 years', 
+        '10-12 years', '12-14 years', '14-16 years', '16-18 years', '18-21 years', '21-25 years']
+
+
+range_mapping =  {"Infants (0-12 months)": (0, 12),
+"1st 1000 Days (0-32 months)": (0,32),
+"Toddlers (1-3 years)": (12, 36),
+"Preschool (3-6 years)": (36, 72),
+"School-age Children (6-12 years)": (72, 144),
+"Adolescents (12-18 years)": (144, 216),
+"Young Adults (18-34 years)": (216, 408),
+"Adults (35-89 years)": (420, 1068),  
+"All Ages (0-100 years)": (0, 1200) 
+}
+
+label_mapping = {
+"Infants (0-12 months)": ['0-1 month', '1-2 months', '2-3 months', '3-4 months', '4-5 months', '5-6 months','6-8 months', '8-10 months', '10-12 months'],
+"1st 1000 Days (0-32 months)" : ['0-1 month', '1-2 months', '2-3 months', '3-4 months', '4-5 months', '5-6 months','6-8 months', '8-10 months', '10-12 months', '12-15 months', '15-18 months', '18-21 months', '21-24 months', '24-30 months', '30-36 months'],
+"Toddlers (1-3 years)": ['12-15 months', '15-18 months', '18-21 months', '21-24 months', '24-30 months', '30-36 months'],
+"Preschool (3-6 years)": ['3-4 years','4-5 years', '5-6 years'],
+"School-age Children (6-12 years)": ['6-7 years', '7-8 years', '8-9 years', '9-10 years', '10-12 years'],
+"Adolescents (12-18 years)": ['12-14 years', '14-16 years', '16-18 years'],
+"Young Adults (18-34 years)": ['18-21 years', '21-24 years','25-29 years', '30-34 years'],
+"Adults (35-89 years)":['35-39 years', '40-44 years','45-49 years','50-54 years','55-59 years','60-64 years','65-69 years','70-74 years','75-79 years','80-84 years','85-89 years'],
+"All Ages (0-100 years)":["0-12 months", "12-36 months", "3-6 years", "6-10 years", "10-12 years", "12-18 years", "18-25 years", "25-34 years", "34-50 years", "50-60 years", "60-70 years", "70-80 years", "80-90 years", "90-100 years"]
+
+}
+
+bins_mapping = {
+"Infants (0-12 months)": [0, 1, 2, 3, 4, 5, 6, 8, 10, 12],
+"1st 1000 Days (0-32 months)": [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 21, 24, 30, 36],
+"Toddlers (1-3 years)": [12, 15, 18, 21, 24, 30, 36],
+"Preschool (3-6 years)": [36, 48, 60, 72],
+"School-age Children (6-12 years)": [72, 84, 96, 108, 120, 144],
+"Adolescents (12-18 years)": [144, 168, 192, 216],
+"Young Adults (18-34 years)": [216, 240, 264, 288, 312, 336],
+"Adults (35-89 years)": [420, 444, 468, 492, 516, 540, 564, 588, 612, 636, 660, 684, 708, 732, 756, 780, 804, 828, 852, 876, 900, 924, 948, 972, 996, 1020, 1044, 1068],
+"All Ages (0-100 years)": [0, 12, 36, 72, 120, 144, 216, 300, 408, 600, 720, 840, 960, 1080, 1200]  # Covers all from 0 months to 100 years
+}
 
 def get_ycoordinate(plot_path):
 
@@ -39,9 +95,22 @@ def get_ycoordinate(plot_path):
     return next_y_coordinate
 
 # 1. Generate Cover Page
-def create_cover_page(user, input_labels, min_age, max_age, threshold, project_label,output_dir):
+def create_cover_page(user, input_labels, age_range, age_min, age_max, threshold, project,output_dir):
 
-    labels = input_labels.keys()
+    global bins 
+    global labels
+    global range_mapping
+    global label_mapping
+    global bins_mapping
+
+    if age_range != "":
+
+        age_min = range_mapping[age_range][0] 
+        age_max = range_mapping[age_range][1] 
+        labels = label_mapping[age_range]
+        bins = bins_mapping[age_range]
+
+    print("AGE MIN: ", age_min, 'AGE MAX', age_max,"age range", age_range)
 
     filename = 'cover_page'
     cover = f"{output_dir}{filename}.pdf"
@@ -51,18 +120,8 @@ def create_cover_page(user, input_labels, min_age, max_age, threshold, project_l
         os.makedirs(output_dir)
 
     # Create a new PDF canvas
-    pdf = canvas.Canvas(os.path.join(output_dir, f"{filename}.pdf"), pagesize=A4)
-
-    # Title
-    pdf.setFont("Helvetica-Bold", 16)
-    pdf.drawCentredString(10.5 * cm, 27 * cm, "UNITY Data Summary Report")
-
-    # Sub-title : volumetric output
-    pdf.setFont("Helvetica", 14)
-    pdf.drawCentredString(10.5 * cm, 25.5 * cm, input_labels['volumetric'])
-
-    # Sub-title
-    pdf.setFont("Helvetica", size=14)    
+    doc = SimpleDocTemplate(os.path.join(output_dir, f"{filename}.pdf"), pagesize=A4)
+    page_width, page_height = A4
 
     # Styles
     styles = getSampleStyleSheet()
@@ -85,54 +144,42 @@ def create_cover_page(user, input_labels, min_age, max_age, threshold, project_l
 
 
     # Main text (equivalent to `multi_cell` in FPDF)
-    text = ("This report provides a detailed summary of the input derived data provided. "
-            "The data is analyzed based on sex and includes the calculation of brain volume z-scores for different age groups. "
+    text = ("This report provides a detailed summary of the input-derived data. "
+            "The data are analyzed by age group and sex. Analyses include the calculation of brain volume z-scores for different age groups, summary descriptive statistics of the total intracranial volume (TICV), and the age distribution in the cohort. of brain volume z-scores for different age groups."
             f"List of outliers has been generated based on z-scores outside of ±{threshold} SD. "
-            "Custom options such as age filtering and polynomial fitting have been applied to the data.")
-
-    # Create a paragraph for text wrapping
-    main_paragraph = Paragraph(text, custom_style)
-
-    # Create a frame to define where the text will go on the page
-    frame = Frame(2 * cm, 17 * cm, 17 * cm, 8 * cm, showBoundary=0)  # Adjust size and position
-
-    # Add paragraph to frame
-    frame.addFromList([main_paragraph], pdf)
-
+            "Custom options such as age filtering and polynomial fitting have been applied to the data."
+            f"<b><br/><br/>Project Description:</b> {project.description}")
     
-    # Custom Options Text
-    custom_options_text = (f"Custom Options Used:<br />"
-                        f"1. Age Range: {min_age}-{max_age} months<br />"
-                        f"2. Outlier Threshold: ±{threshold} SD<br />"
-                        "3. Polynomial Fit: Degree 3 (Cubic)<br />"
-                        "4. Confidence Interval: 95%")
+    custom_options_text = ( f"<br/><br/>Custom Options used:<br />"
+                            f"1. Age Range: {age_min}-{age_max} months<br/>"
+                            f"2. Outlier Threshold: ±{threshold} SD<br/>"
+                            "3. Polynomial Fit: Degree 3 (Cubic)<br/>"
+                            "4. Confidence Interval: 95% <br/>"
+                            f"<i>Input file used: {input_labels['volumetric']}</i>")
     
-    print(custom_options_text)
+    stylesheet = getSampleStyleSheet()
+    stylesheet.add(ParagraphStyle(name='Paragraph', spaceAfter=20))
+    elements = []
+    elements.append(Paragraph(text + custom_options_text, stylesheet['Paragraph']))
 
-    # Create a paragraph for custom options with line breaks
-    custom_paragraph = Paragraph(custom_options_text, custom_style)
+    # Define a frame for the content to flow into
+    page_width, page_height = A4
+    margin = 40
+    frame = Frame(margin, -60, page_width - 2 * margin, page_height - 2 * margin, id='normal')
 
-    # Create another frame for custom options (below user details)
-    custom_frame = Frame(2 * cm, 10 * cm, 17 * cm, 8 * cm, showBoundary=0)
+    # Define the PageTemplate with the custom "beautify_report" function for adding logo/border
+    template = PageTemplate(id='CustomPage', frames=[frame], onPage=generate_on_page(user,project.label,age_min,age_max,threshold,input_labels))
 
-    # Add custom options paragraph to the new frame
-    custom_frame.addFromList([custom_paragraph], pdf)
-
-    # Timestamp and User Details
-    pdf.setFont("Helvetica", 12)
-    pdf.drawString(2 * cm, 2 * cm, "Generated By:")
-    pdf.drawString(2 * cm, 1.5 * cm, f"{user}")
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    pdf.drawString(2 * cm, 1 * cm, f"{timestamp}")
-
-    pdf.save()
+    # Build the document
+    doc.addPageTemplates([template])
+    doc.build(elements)
     print("Cover page has been generated.")
 
     return cover
 
 
 # 2. Parse the volumetric CSV File
-def parse_csv(filepath, project_label, age_min, age_max, threshold):
+def parse_csv(filepath, project_label, age_range, age_min, age_max, threshold):
 
     """Parse the input CSV file.
 
@@ -145,29 +192,34 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
         n_clean_sessions (int): Number of unique sessions in the clean data after removing outliers.
         outlier_n (int): Number of participants flagged as outliers based on
     """
+
+    global bins 
+    global labels
+    global range_mapping
+    global label_mapping
+    global bins_mapping
         
     # Example DataFrame with ages in months
-    #  df = pd.read_csv('/Users/nbourke/GD/atom/unity/fw-gears/fw-untitled/UNITY-Derivatives-volumes.csv')
     df = pd.read_csv(filepath)
     n_sessions = df['session'].nunique()  # Number of unique sessions
     print("Number of unique sessions: ", n_sessions)
-    print()
+    print(df.columns)
 
-    # Define the bins and labels
-    # These have been setup with finer granularity early on due to rapid growth and then coarser granularity later
-    bins = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 21, 24, 30, 36, 48, 60, 72, 84, 96, 108, 120, 144, 168, 192, 216, 252, 300]
-    labels = ['0-1 month', '1-2 months', '2-3 months', '3-4 months', '4-5 months', '5-6 months',
-            '6-8 months', '8-10 months', '10-12 months', '12-15 months', '15-18 months', 
-            '18-21 months', '21-24 months', '24-30 months', '30-36 months','3-4 years', 
-            '4-5 years', '5-6 years', '6-7 years', '7-8 years', '8-9 years', '9-10 years', 
-            '10-12 years', '12-14 years', '14-16 years', '16-18 years', '18-21 years', '21-25 years']
-
-
+    if age_range != "":
+        age_min = range_mapping[age_range][0] 
+        age_max = range_mapping[age_range][1] 
+        labels = label_mapping[age_range]
+        bins = bins_mapping[age_range]
+    
     # Bin the ages
+    print(bins,labels)
+
     # Rename the 'age' column to 'age_in_days'
     df.rename(columns={'age': 'age_in_days'}, inplace=True)
     df['age_in_months'] = df['age_in_days'] / 30.44
     df['age_group'] = pd.cut(df['age_in_months'], bins=bins, labels=labels, right=False)
+
+    print(max(df['age_in_months']))
 
     # Group by sex and age group
     grouped = df.groupby(['sex', 'age_group'])
@@ -178,15 +230,57 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
 
     # Calculate z-scores
     df['z_score'] = (df['total intracranial'] - df['mean_total_intracranial']) / df['std_total_intracranial']
-
     # Check if 'project_label' exists, if not, assign a default value
     if 'project_label' not in df.columns:
         df['project_label'] = project_label  # Or any default value like None
-        # Define the list of columns you want to retain
-    columns_to_keep = ['project_label', 'subject',	'session',	'age_in_months', 'sex',	'acquisition',	'total intracranial', 'z_score']
+
+    
+    # Calculate other volumes
+    df['total cerebral white matter'] = df['left cerebral white matter'] + df['right cerebral white matter']
+    df['total cerebral cortex'] = df['left cerebral cortex'] + df['right cerebral cortex']
+    df['hippocampus'] = df['left hippocampus'] + df['right hippocampus']
+    df['thalamus'] = df['left thalamus'] + df['right thalamus']
+    df['amygdala'] = df['left amygdala'] + df['right amygdala']
+    df['putamen'] = df['left putamen'] + df['right putamen']
+    df['caudate'] = df['left caudate'] + df['right caudate']
+
+
+    # Rename the 'age' column to 'age_in_days'
+    df.rename(columns={'age': 'age_in_days'}, inplace=True)
+    df['age_in_months'] = df['age_in_days'] / 30.44
+    df['age_group'] = pd.cut(df['age_in_months'], bins=bins, labels=labels, right=False)
+    grouped = df.groupby(['sex','age_group'])
+    used_age_groups = [age for age in labels if age in df['age_group'].unique()]
+    # Calculate the count of participants per age group``
+    age_group_counts = df['age_group'].value_counts().sort_index()
+
+    # Create new labels with counts
+    age_group_labels = [f"{label}\n(n={age_group_counts[label]})" for label in used_age_groups]
+
+    # Ensure that 'age_group' is treated as a categorical variable with the correct order (only for used categories)
+    df['age_group'] = pd.Categorical(df['age_group'], categories=used_age_groups, ordered=True)
+    
+    # Define the list of columns you want to retain
+    
+    volumetric_cols = ['total intracranial', 'z_score', 'total cerebral white matter', 'total cerebral cortex', 'hippocampus', 
+                   'thalamus', 'amygdala', 'putamen', 'caudate']
+    columns_to_keep = ['project_label', 'subject',	'session',	'age_in_months', 'sex',	'acquisition'] + volumetric_cols
+    
+    for col in volumetric_cols:
+
+        # Calculate mean and std for each group
+        df[f'mean_{col}'] = grouped[col].transform('mean')
+        df[f'std_{col}'] = grouped[col].transform('std')
+
+        # Calculate z-scores
+        df[f'z_score_{col}'] = (df[col] - df[f'mean_{col}']) / df[f'std_{col}']
+
         
     # Filter the DataFrame for subjects with z-scores outside of ±1.5 SD and retain only the specified columns
     outliers_df = df[(df['z_score'] < - threshold) | (df['z_score'] > threshold)][columns_to_keep]
+    df["is_outlier"] = (df['z_score'] < -threshold) | (df['z_score'] > threshold)
+
+    
     # Save the filtered DataFrame to a CSV file
     outliers_df.to_csv(os.path.join(output_dir,'outliers_list.csv'), index=False)
     outlier_n = len(outliers_df)
@@ -234,7 +328,6 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
     # Pivot the table to have Sex as columns and Age Group as a single row index
     summary_table = summary_table.pivot(index='age_group', columns='sex')
 
-
     # Flatten the multi-level columns
     summary_table.columns = ['_'.join(col).strip() for col in summary_table.columns.values]
 
@@ -252,11 +345,22 @@ def parse_csv(filepath, project_label, age_min, age_max, threshold):
 
     # Round the numerical columns to 2 decimal places
     summary_table = summary_table.round(2)
+    summary_table.to_csv(os.path.join(workdir,'summary_table.csv'),index=False)
+
+
+    #### Plotting outliers #####
+    #outliers_df
+    sns.kdeplot(df.loc[df['is_outlier'] == False, 'total intracranial'], label='Non-Outliers')
+    sns.kdeplot(df.loc[df['is_outlier'] == True, 'total intracranial'], label='Outliers', color='red')
+    plt.title('Distribution of TICV of outliers vs non-outliers')
+    plt.legend()
+    plt.savefig(os.path.join(workdir, "outlier_icv_plot.png"))
+
     return df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels
 
 
 # 3. Generate the Data Report
-def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels, age_min, age_max, threshold,output_dir):
+def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels, age_range, age_min, age_max, threshold,output_dir,api_key):
 
     """Generate a data report with multiple plots and a summary table in a PDF format.
 
@@ -270,6 +374,8 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     a4_fig_size = (8.27, 11.69)  # A4 size
     # Define the page size
     page_width, page_height = A4
+    max_width = 300  # Maximum width in points
+    max_height = page_width / 3  # Maximum height in points
     
     # --- Plot 1: Boxplot of all Z-Scores by Age Group with Sample Sizes --- #
 
@@ -288,7 +394,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     age_group_labels = [f"{label}\n(n={age_group_counts[label]})" for label in used_age_groups]
 
 
-    # Dynamically adjust font size based on the number of labels
+    # Dynamically adjust font size based on the number of labeé&ls
     n_labels = len(used_age_groups)
     font_size = max(6, 8 - n_labels // 3)  # Scale the font size down as the number of labels increases. [Not used]
 
@@ -301,7 +407,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
 
     # Set the plot size and create the boxplot
     # fig, ax = plt.subplots(figsize=a4_fig_size)
-    sns.boxplot(x='age_group', y='z_score', data=df, ax=ax, order=used_age_groups)
+    sns.boxplot(x='age_group', y='z_score', data=df, ax=ax, order=used_age_groups, palette='Set2', legend=False, hue='age_group')
     ax.set_title('Z-Scores by Age Group')
     ax.set_xlabel('Age Group')
     ax.set_ylabel('Z-Score')
@@ -321,7 +427,7 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
                 f"to show the range within {threshold} times the IQR.\n"
                 f"Total number of unique sessions = {n_sessions}\n"
                 f"Number of sessions after removing outliers = {n_clean_sessions}\n"
-                f"{outlier_n} participants fell outside the {threshold} IQR range and are flagged for further review.",
+                f"{outlier_n} participant(s) fell outside the {threshold} IQR range and are flagged for further review.",
                 wrap=True, horizontalalignment='left', fontsize=11,
                 bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 11})  # Added padding for better spacing
 
@@ -332,41 +438,76 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     #plt.tight_layout()
     plt.savefig(plot_path)
 
-    pdf.drawImage(plot_path, 70, -50, width= 500, preserveAspectRatio=True)   # Position plot higher on the page
-
+    pdf.drawImage(plot_path, 70, -120, width= 500, preserveAspectRatio=True)   # Position plot higher on the page
     plt.close()
 
-    
     # Calculate y-coordinate for the next image (descriptive stats)  
     next_y_coordinate = get_ycoordinate(plot_path)
-    # --- Plot 2: Summary Table of all Participants --- #   
-    
-    # Create figure with full A4 size using plt.figure() (not plt.subplots)
-    fig = plt.figure(figsize=(10,12))
-    ax = fig.add_axes([0.13, 0.5, 0.75, 0.4])  # Left, bottom, width, height (adjust these as needed)
-   
+    # --- Plot 2: Summary Table of all Participants --- # 
+    summary_table = pd.read_csv(os.path.join(workdir,'summary_table.csv'))    
+    summary_table.fillna(0,inplace=True)
+
+    # Create figure
+
+    # Apply formatting rules
+    for col in summary_table.columns:
+        if col.startswith("n "):
+            summary_table[col] = summary_table[col].apply(lambda x: int(round(x)))
+    i = 0
+    for sex in ["M","F"]:
+        sub_ses = summary_table[f"n sub ({sex})"].astype(str) + " / " + summary_table[f"n ses ({sex})"].astype(str)
+        summary_table.insert(i+1, f"n ({sex}) \n(subs/ses)", sub_ses)
+
+    # Drop the original individual columns
+    summary_table = summary_table.drop(columns=["n sub (F)", "n ses (F)", "n sub (M)", "n ses (M)"])
+
+    # Create figure
+    fig = plt.figure(figsize=(11.7, 8.3))  # A4 size in inches (approx.)
+    ax = fig.add_axes([0.05, 0.3, 0.9, 0.6])  # Adjust the table position
+
+    # Add Title
+    # plt.text(0.5, 0.95, 'Summary Descriptive Statistics', fontsize=14, ha='center', transform=fig.transFigure)
+
+    # Turn off axes
     ax.axis('tight')
     ax.axis('off')
-    plt.text(0.5, 0.85, 'Summary Descriptive Statistics', fontsize=14, ha='center', transform=fig.transFigure)
 
-    # Increase font size for the table
-    table = ax.table(cellText=summary_table.values, colLabels=summary_table.columns, cellLoc='center', loc='center')
+    # Create table
+    table = ax.table(
+        cellText=summary_table.values,
+        colLabels=summary_table.columns,
+        cellLoc='center',
+        loc='center'
+    )
+
+    # Customize table appearance
     table.auto_set_font_size(False)
-    table.set_fontsize(8)  # Adjust font size as needed
-    table.scale(1.2, 1.2)  # Scale the table   
-    
+    table.set_fontsize(10)
+    table.scale(0.9, 2)  # Adjust scaling (wider and taller)
+    ax.set_title('Summary Descriptive Statistics',fontdict={'fontsize':12})
     # Add explanation text below the table
-    plt.figtext(0.13, 0.5,
-                "This table summarizes the descriptive statistics for the participants,\n"
-                "including the number of participants and sessions by sex and age group.",
-                wrap=True, horizontalalignment='left', fontsize=12,
-                bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing
+
+
+    # plt.figtext(0.22, 0.84,
+    #             "This table summarizes the descriptive statistics for the participants,\n"
+    #             "including the number of participants and sessions by sex and age group.",
+    #             wrap=True, horizontalalignment='left', fontsize=12,
+    #             bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10})  # Added padding for better spacing
+
+
+    # Add some styling
+    for key, cell in table.get_celld().items():
+        if key[0] == 0:  # Header row
+            cell.set_text_props(weight='bold', color='white')
+            cell.set_facecolor('#40466e')  # Dark header background
+        else:
+            cell.set_facecolor('#f0f0f0')  # Light gray background for data rows
 
     # Adjust layout to ensure no overlap
-    plt.subplots_adjust(top=0.85, bottom=0.2)  # Adjust to fit title and text properly
+    plt.subplots_adjust(top=0.85, bottom=0.8)  # Adjust to fit title and text properly
     plot_path = os.path.join(workdir, "descriptive_stats.png")
-    #plt.tight_layout()
-    plt.savefig(plot_path)
+    plt.tight_layout()
+    plt.savefig(plot_path,bbox_inches='tight')
 
     image = ImageReader(plot_path)
     # Get the width and height of the image
@@ -374,10 +515,9 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
 
     #pdf.savefig()  # Save the table to the PDF
     plt.close()
-
+    pdf.drawImage(plot_path, 75, next_y_coordinate+150, width= 500, preserveAspectRatio=True)   # Position plot higher on the page
     
-
-    pdf.drawImage(plot_path, 75, next_y_coordinate-260, width= 500, preserveAspectRatio=True)   # Position plot higher on the page
+    pdf = beautify_report(pdf,False,True)
     pdf.showPage()
 
     next_y_coordinate = get_ycoordinate(plot_path)
@@ -401,8 +541,8 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     # Add explanation text below the plot
     plt.figtext(0.15, 0.35, "This plot shows the distribution of participant ages in months.\n"
                         "The KDE curve provides a smoothed estimate of the age distribution.\n"
-                        f"Plot limits set to {age_min}-{age_max} months, n = {n}.\n "
-                            f"Included projects = {', '.join(project_labels)}",
+                        f"Plot limits set to {age_min}-{age_max} months, n = {n}.\n"
+                        f"Included projects = {', '.join(project_labels)}",
                 wrap=True, horizontalalignment='left', fontsize=12,
                 bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 15})  # Added padding for better spacing
 
@@ -449,12 +589,10 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     ax.legend(handles=handles[:2], labels=labels[:2], title='Sex')
 
     # Add explanation text below the plot
-    plt.figtext(0.13, 0.3,  f"This scatter plot shows the relationship between age and total intracranial volume, \n"
+    plt.figtext(0.13, 0.32,  f"This scatter plot shows the relationship between age and total intracranial volume, \n"
                             f"with a cubic polynomial fit. The trend is separated by sex, and confidence intervals \n"
-                            f"are included for each fit.\nData points outside the initial study {threshold} IQR range are excluded from the plot.\n"
-                            "\n"
-                            f"Plot limits set to {age_min}-{age_max} months, \n"
-                            f"n = {n}\n"
+                            f"are included for each fit.\nData points outside the initial study {threshold} IQR range are excluded from the plot.\n\n"
+                            f"Plot limits set to {age_min}-{age_max} months, n = {n}.\n"
                             f"Included projects = {', '.join(project_labels)}",
                 wrap=True, horizontalalignment='left', fontsize=12,
                 bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 15})  # Added padding for better spacing
@@ -468,6 +606,49 @@ def create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions
     plt.close()
 
     pdf.drawImage(plot_path, 75, next_y_coordinate, width= 400, preserveAspectRatio=True)   # Position plot higher on the page    
+
+    
+    volumetrics_to_plot = ['total cerebral white matter', 'total cerebral cortex', 'hippocampus', 
+                   'thalamus', 'amygdala', 'putamen', 'caudate']
+
+    pairs = list(itertools.combinations(labels, 2))
+    # grouped = df.groupby(['sex','age_group'])
+
+    # # Set up the figure and axes for a grid layout
+    # fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(15, 12))  # Adjust as needed
+    # axes = axes.flatten()
+
+    # for i,col in enumerate(volumetrics_to_plot):
+
+    #     # Calculate mean and std for each group
+    #     df[f'mean_{col}'] = grouped[col].transform('mean')
+    #     df[f'std_{col}'] = grouped[col].transform('std')
+
+    #     # Calculate z-scores
+    #     df[f'z-score_{col}'] = (df[col] - df[f'mean_{col}']) / df[f'std_{col}']
+
+    #     sns.boxplot(x='age_group', y=f'z-score_{col}', data=df, ax=axes[i], order=used_age_groups, palette='Set2',showfliers=False)
+    #     # add_stat_annotation(axes[i], data=df, x='age_group', y=f'z_score_{col}',
+    #     #                 box_pairs=pairs, test='t-test_ind', text_format='star',
+    #     #                 loc='inside', verbose=2)
+        
+    #     axes[i].set_xticklabels( age_group_labels, rotation=60)
+    #     axes[i].set_title(col.title())
+    #     axes[i].set_xlabel('Age Group')
+    #     axes[i].set_ylabel((f'z-score_{col}').replace('_',' ').title())
+
+    # for j in range(len(volumetrics_to_plot), len(axes)):
+    #     fig.delaxes(axes[j])
+
+    # # Adjust layout
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(workdir,"volumetrics.png"))
+    
+    pdf = beautify_report(pdf,False,True)
+    pdf.showPage()
+
+    #### Show an example of a few segmentations
+    
     pdf.save()  # Save the PDF
 
     print("PDF summary report has been generated.")
@@ -484,9 +665,9 @@ def generate_qc_report (input_dir, input_labels,project_labels) :
     filename = "qc_report"
     report = f'{workdir}{filename}.pdf'
     pdf = canvas.Canvas((f'{workdir}{filename}.pdf') )
+    pdf = beautify_report(pdf,False,True)
+
     a4_fig_size = (8.27, 11.69)  # A4 size
-    # Define the page size
-    page_width, page_height = A4
 
     if input_labels['qc'] != "":
         df = pd.read_csv(os.path.join(input_dir,input_labels['qc']))
@@ -594,8 +775,8 @@ def generate_qc_report (input_dir, input_labels,project_labels) :
         plt.figtext(
             0.17, 0.32,  # Position relative to the figure (0.42 keeps it below ax)
             "This line chart illustrates the monthly failure rate\nfor quality control (QC) across sessions,\n"
-            "shown as a percentage of total acquisitions for each month.\n"
-            f"\nIncluded projects = {', '.join(project_labels)}",
+            "shown as a percentage of total acquisitions for each month.\n\n"
+            f"Included projects = {', '.join(project_labels)}",
             wrap=True, horizontalalignment='left', fontsize=12,
             bbox={'facecolor': 'lightgray', 'alpha': 0.5, 'pad': 10}
         )
@@ -620,6 +801,7 @@ def generate_qc_report (input_dir, input_labels,project_labels) :
         pdf.setFont("Helvetica-Bold", 14)
         pdf.drawCentredString(subtitle_x, subtitle_y, subtitle_text)
 
+    
     pdf.save()
 
     return report

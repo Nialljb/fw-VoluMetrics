@@ -29,16 +29,17 @@ def main(context: GearToolkitContext) -> None:
     workdir= "/flywheel/v0/work/"
 
     # Step 0: Parse the configuration file
-    user, filepath, input_labels, age_min, age_max, threshold, project_label, directory_path = parse_config(context)
+    user, filepath, input_labels, age_range, age_min, age_max, threshold, project, directory_path,api_key = parse_config(context)
 
     # Step 1: Create the cover page
-    cover = create_cover_page(user, input_labels, age_min, age_max, threshold, project_label,workdir)
+    cover = create_cover_page(user, input_labels, age_range, age_min, age_max, threshold, project,workdir)
+    project_label = project.label
 
     # Step 2: Parse the CSV file
-    df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels = parse_csv(filepath, project_label, age_min, age_max, threshold)
+    df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels = parse_csv(filepath, project_label, age_range, age_min, age_max, threshold)
 
-    # Step 3: Create the data report using the parsed CSV, and the QC csv if generated  
-    report = create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels, age_min, age_max, threshold,output_dir)
+    # Step 3: Create the data report using the parsed CSV 
+    report = create_data_report(df, summary_table, filtered_df, n, n_projects, n_sessions, n_clean_sessions, outlier_n, project_labels, labels, age_range, age_min, age_max, threshold,output_dir, api_key)
     #qc = generate_qc_report(directory_path, input_labels,project_labels)
     
     # Step 4: Merge cover page and data report
@@ -47,7 +48,7 @@ def main(context: GearToolkitContext) -> None:
     # Format the timestamp as a string
     formatted_timestamp = current_timestamp.strftime('%Y-%m-%d_%H-%M-%S')
 
-    final_report = os.path.join(output_dir, f"{project_label}_{formatted_timestamp}_report.pdf")
+    final_report = os.path.join(output_dir, f"{project.label}_{formatted_timestamp}_report.pdf")
 
     merge_pdfs(cover, report, final_report)
 
