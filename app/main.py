@@ -224,6 +224,8 @@ def parse_csv(filepath, project_label, age_range, age_min, age_max, threshold):
     # Group by sex and age group
     grouped = df.groupby(['sex', 'age_group'])
 
+   
+
     # Calculate mean and std for each group
     df['mean_total_intracranial'] = grouped['total intracranial'].transform('mean')
     df['std_total_intracranial'] = grouped['total intracranial'].transform('std')
@@ -324,6 +326,8 @@ def parse_csv(filepath, project_label, age_range, age_min, age_max, threshold):
 
     # Remove rows where the mean of 'total intracranial' is NaN
     summary_table = summary_table.dropna(subset=[('total intracranial', 'mean')])
+
+    print(summary_table)
 
     # Pivot the table to have Sex as columns and Age Group as a single row index
     summary_table = summary_table.pivot(index='age_group', columns='sex')
